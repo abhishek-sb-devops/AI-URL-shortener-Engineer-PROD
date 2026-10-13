@@ -4,7 +4,13 @@ from pydantic import BaseModel, HttpUrl, Field
 
 class ShortenRequest(BaseModel):
     original_url: HttpUrl = Field(..., description="The original target URL to shorten")
-    custom_alias: Optional[str] = Field(None, description="Optional custom alias for the URL")
+    custom_alias: Optional[str] = Field(
+        None,
+        min_length=3,
+        max_length=30,
+        pattern=r"^[a-zA-Z0-9_-]+$",
+        description="Optional custom alias (3-30 chars, alphanumeric/hyphens/underscores)",
+    )
 
 
 class ShortenResponse(BaseModel):

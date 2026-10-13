@@ -12,6 +12,10 @@ TEST_API_DB = "test_api_urls.db"
 def setup_and_cleanup_db():
     repo.db_path = TEST_API_DB
     repo._init_db()
+    with repo._get_connection() as conn:
+        conn.execute("DELETE FROM urls;")
+        conn.execute("DELETE FROM sequence;")
+        conn.commit()
 
     yield
 

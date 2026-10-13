@@ -1,7 +1,7 @@
 import sqlite3
 from datetime import datetime, timezone
 from typing import Optional
-from src.exceptions import URLNotFoundException
+from src.exceptions import URLNotFoundException, AliasConflictException
 
 
 class SQLiteRepository:
@@ -51,16 +51,19 @@ class SQLiteRepository:
 
     def save(self, short_code: str, original_url: str) -> dict:
         created_at = datetime.now(timezone.utc).isoformat()
-        with self._get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                INSERT INTO urls (short_code, original_url, created_at, clicks)
-                VALUES (?, ?, ?, 0)
-                """,
-                (short_code, original_url, created_at),
-            )
-            conn.commit()
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    """
+                    INSERT INTO urls (short_code, original_url, created_at, clicks)
+                    VALUES (?, ?, ?, 0)
+                    """,
+                    (short_code, original_url, created_at),
+                )
+                conn.commit()
+        except sqlite3.IntegrityError:
+            raise AliasConflictException(f"Alias '{short_code}' already exists.")
         return {
             "short_code": short_code,
             "original_url": original_url,
