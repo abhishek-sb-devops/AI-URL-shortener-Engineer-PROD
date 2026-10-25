@@ -1,8 +1,9 @@
 import os
 import pytest
+
 from src.repository import SQLiteRepository
 from src.service import URLShortenerService
-from src.exceptions import URLNotFoundException, AliasConflictException
+from src.exceptions import AliasConflictException, URLNotFoundException
 
 TEST_DB = "test_service_urls.db"
 

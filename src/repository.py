@@ -1,7 +1,8 @@
 import sqlite3
 from datetime import datetime, timezone
 from typing import Optional
-from src.exceptions import URLNotFoundException, AliasConflictException
+
+from src.exceptions import AliasConflictException, URLNotFoundException
 
 
 class SQLiteRepository:
@@ -62,8 +63,9 @@ class SQLiteRepository:
                     (short_code, original_url, created_at),
                 )
                 conn.commit()
-        except sqlite3.IntegrityError:
-            raise AliasConflictException(f"Alias '{short_code}' already exists.")
+        except sqlite3.IntegrityError as exc:
+            raise AliasConflictException(f"Alias '{short_code}' already exists.") from exc
+
         return {
             "short_code": short_code,
             "original_url": original_url,
@@ -75,8 +77,7 @@ class SQLiteRepository:
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
-                "SELECT short_code, original_url, created_at, clicks "
-                "FROM urls WHERE short_code = ?",
+                "SELECT short_code, original_url, created_at, clicks FROM urls WHERE short_code = ?",
                 (short_code,),
             )
             row = cursor.fetchone()
@@ -103,4 +104,13 @@ class SQLiteRepository:
                 "SELECT original_url FROM urls WHERE short_code = ?",
                 (short_code,),
             )
-            return cursor.fetchone()[0]
+            row = cursor.fetchone()
+            if row is None:
+                raise URLNotFoundException(f"URL code '{short_code}' not found.")
+            return row[0]
+
+    def get_analytics(self, short_code: str) -> dict:
+        record = self.get_by_code(short_code)
+        if record is None:
+            raise URLNotFoundException(f"URL code '{short_code}' not found.")
+        return record

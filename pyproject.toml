@@ -6,5 +6,9 @@ filterwarnings = [
     "ignore:.*httpx.*:UserWarning",
     "ignore:.*httpx.*:DeprecationWarning",
     "ignore:.*httpx.*",
-    "ignore::DeprecationWarning"
+    "ignore::DeprecationWarning",
 ]
+
+[tool.flake8]
+max-line-length = 100
+exclude = [".venv", "__pycache__"]
