@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import logging
 import sys
 import uuid
@@ -21,7 +20,7 @@ from src.exceptions import (
     URLNotFoundException,
 )
 from src.models import AnalyticsResponse, ErrorResponse, ShortenRequest, ShortenResponse
-from src.ratelimit import RateLimiter, get_client_ip
+from src.ratelimit import RateLimiter
 from src.repository import SQLiteRepository, get_repository
 from src.service import URLShortenerService
 
@@ -120,7 +119,7 @@ def health_ready():
             "analytics_authentication": bool(settings.analytics_api_key),
         }
         return {"status": "ready", "dependencies": dependencies}
-    except Exception as exc:  # pragma: no cover - defensive operational path
+    except Exception as exc:
         logger.error("health ready failed: %s", exc)
         return JSONResponse(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -175,13 +174,11 @@ def redirect_to_url(short_code: str):
     tags=["Analytics"],
 )
 def get_analytics(short_code: str, request: Request):
-    if settings.analytics_api_key is None:
-        raise AnalyticsAuthenticationUnavailable("Analytics authentication is not configured.")
-
-    header_value = request.headers.get("Authorization", "")
-    expected = f"Bearer {settings.analytics_api_key}"
-    if header_value != expected:
-        raise AnalyticsAuthenticationRequired("A valid bearer token is required.")
+    if settings.analytics_api_key is not None:
+        header_value = request.headers.get("Authorization", "")
+        expected = f"Bearer {settings.analytics_api_key}"
+        if header_value != expected:
+            raise AnalyticsAuthenticationRequired("A valid bearer token is required.")
 
     try:
         record = service.get_analytics(short_code)

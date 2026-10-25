@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import ipaddress
-import time
 from typing import Any
 
 from fastapi import Request
@@ -27,6 +26,7 @@ class RateLimiter:
                     return candidate
                 except ValueError:
                     pass
+
         client = request.client.host if request.client else "127.0.0.1"
         try:
             ipaddress.ip_address(client)
@@ -37,15 +37,11 @@ class RateLimiter:
     async def enforce(self, request: Request, category: str) -> None:
         if not settings.enable_rate_limits:
             return
+
         try:
             client_ip = self._get_client_ip(request)
             if self.redis_client is None:
-                try:
-                    from redis import Redis
-
-                    self.redis_client = Redis.from_url(settings.redis_url, decode_responses=True)
-                except Exception as exc:
-                    raise RateLimitUnavailable("Rate-limit service is temporarily unavailable") from exc
+                self.redis_client = Redis.from_url(settings.redis_url, decode_responses=True)
 
             limits = {
                 "create": settings.rate_limit_create_per_minute,
@@ -61,3 +57,7 @@ class RateLimiter:
                 raise RateLimitExceeded("Request rate limit exceeded", retry_after_seconds=60)
         except RedisError as exc:
             raise RateLimitUnavailable("Rate-limit service is temporarily unavailable") from exc
+
+
+def get_client_ip(request: Request) -> str:
+    return RateLimiter()._get_client_ip(request)

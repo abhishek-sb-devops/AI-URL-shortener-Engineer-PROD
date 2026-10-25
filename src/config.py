@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -11,7 +10,10 @@ class Settings(BaseSettings):
     app_name: str = "URL Shortener Microservice"
     environment: str = Field(default="development", validation_alias="ENV")
     database_url: str = Field(default="sqlite:///urls.db", validation_alias="DATABASE_URL")
-    postgres_url: str = Field(default="postgresql+psycopg://postgres:postgres@localhost:5432/url_shortener", validation_alias="POSTGRES_URL")
+    postgres_url: str = Field(
+        default="postgresql+psycopg://postgres:postgres@localhost:5432/url_shortener",
+        validation_alias="POSTGRES_URL",
+    )
     redis_url: str = Field(default="redis://localhost:6379/0", validation_alias="REDIS_URL")
     analytics_api_key: str | None = Field(default=None, validation_alias="ANALYTICS_API_KEY")
     trusted_proxy_cidrs: list[str] = Field(
@@ -35,10 +37,8 @@ class Settings(BaseSettings):
     )
 
     @property
-    def effective_database_url(self) -> str:
-        if self.database_url and self.database_url.startswith("postgres"):
-            return self.database_url
-        return self.database_url
+    def is_postgres(self) -> bool:
+        return self.database_url.startswith("postgresql")
 
     @property
     def analytics_auth_required(self) -> bool:

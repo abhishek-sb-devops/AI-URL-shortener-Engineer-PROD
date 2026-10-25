@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, Field
 
 
 class ShortenRequest(BaseModel):
-    original_url: HttpUrl = Field(..., description="The original target URL to shorten")
+    original_url: str = Field(..., description="The original target URL to shorten")
     custom_alias: str | None = Field(
         default=None,
         min_length=3,

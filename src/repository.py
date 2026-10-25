@@ -125,7 +125,7 @@ class PostgresRepository:
         try:
             from sqlalchemy import create_engine, text
             from sqlalchemy.orm import sessionmaker
-        except Exception as exc:
+        except Exception as exc:  # pragma: no cover - depends on optional driver
             raise RuntimeError("SQLAlchemy is required for PostgresRepository") from exc
 
         self.engine = create_engine(self.database_url, pool_pre_ping=True)
@@ -194,6 +194,7 @@ class PostgresRepository:
                 )
         except Exception as exc:
             raise AliasConflictException(f"Alias '{short_code}' already exists.") from exc
+
         return {
             "short_code": short_code,
             "original_url": original_url,
@@ -206,7 +207,9 @@ class PostgresRepository:
 
         with self.engine.connect() as conn:
             row = conn.execute(
-                text("SELECT short_code, original_url, created_at, clicks FROM urls WHERE short_code = :short_code"),
+                text(
+                    "SELECT short_code, original_url, created_at, clicks FROM urls WHERE short_code = :short_code"
+                ),
                 {"short_code": short_code},
             ).fetchone()
         if row:

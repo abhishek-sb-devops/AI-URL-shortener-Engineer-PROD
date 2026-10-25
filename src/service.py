@@ -36,7 +36,9 @@ class URLShortenerService:
         if len(alias) < 3 or len(alias) > 30:
             raise AliasConflictException("Custom alias must be between 3 and 30 characters.")
         if not alias.replace("-", "").replace("_", "").isalnum():
-            raise AliasConflictException("Custom alias may only contain letters, numbers, hyphens, and underscores.")
+            raise AliasConflictException(
+                "Custom alias may only contain letters, numbers, hyphens, and underscores."
+            )
         return alias
 
     def shorten_url(self, original_url: str, custom_alias: str = None) -> dict:
