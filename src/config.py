@@ -13,9 +13,9 @@ class Settings(BaseSettings):
         default="sqlite:///urls.db",
         validation_alias="DATABASE_URL",
     )
-    postgres_url: str = Field(
-        default="postgresql+psycopg://postgres:postgres@localhost:5432/url_shortener",
-        validation_alias="POSTGRES_URL",
+    use_postgres: bool = Field(
+        default=False,
+        validation_alias="USE_POSTGRES",
     )
     redis_url: str = Field(
         default="redis://localhost:6379/0",
@@ -64,8 +64,8 @@ class Settings(BaseSettings):
     )
 
     @property
-    def is_postgres(self) -> bool:
-        return self.database_url.startswith("postgresql")
+    def is_postgres_enabled(self) -> bool:
+        return self.use_postgres and self.database_url.startswith("postgresql")
 
     @property
     def analytics_auth_required(self) -> bool:
