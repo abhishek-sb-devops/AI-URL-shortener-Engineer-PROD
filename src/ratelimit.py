@@ -27,6 +27,10 @@ class RateLimiter:
                     pass
 
         client = request.client.host if request.client else "127.0.0.1"
+
+        if client in {"127.0.0.1", "localhost", "::1", "testclient"}:
+            return "127.0.0.1"
+
         try:
             ipaddress.ip_address(client)
             return client

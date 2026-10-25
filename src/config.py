@@ -69,7 +69,7 @@ class Settings(BaseSettings):
 
     @property
     def analytics_auth_required(self) -> bool:
-        return self.analytics_api_key is not None
+        return bool(self.analytics_api_key and self.analytics_api_key.strip())
 
 
 settings = Settings()

@@ -33,7 +33,7 @@ rate_limiter = RateLimiter()
 app = FastAPI(
     title=settings.app_name,
     version="1.2.0",
-    description="Production-ready URL Shortener Microservice",
+    description="URL Shortener Microservice",
 )
 
 
@@ -153,7 +153,7 @@ def health_ready():
         dependencies = {
             "database": settings.is_postgres_enabled,
             "redis": True,
-            "analytics_authentication": bool(settings.analytics_api_key),
+            "analytics_authentication": settings.analytics_auth_required,
         }
         return {"status": "ready", "dependencies": dependencies}
     except Exception as exc:
@@ -165,7 +165,7 @@ def health_ready():
                 "dependencies": {
                     "database": False,
                     "redis": False,
-                    "analytics_authentication": bool(settings.analytics_api_key),
+                    "analytics_authentication": settings.analytics_auth_required,
                 },
             },
         )
@@ -220,7 +220,7 @@ def redirect_to_url(short_code: str):
     tags=["Analytics"],
 )
 def get_analytics(short_code: str, request: Request):
-    if settings.analytics_api_key is not None:
+    if settings.analytics_auth_required:
         header_value = request.headers.get("Authorization", "")
         expected = f"Bearer {settings.analytics_api_key}"
         if header_value != expected:
