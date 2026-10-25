@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 import sys
 import uuid
-from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.responses import JSONResponse, RedirectResponse
@@ -21,7 +20,7 @@ from src.exceptions import (
 )
 from src.models import AnalyticsResponse, ErrorResponse, ShortenRequest, ShortenResponse
 from src.ratelimit import RateLimiter
-from src.repository import SQLiteRepository, get_repository
+from src.repository import get_repository
 from src.service import URLShortenerService
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
@@ -40,12 +39,25 @@ app = FastAPI(
 
 @app.middleware("http")
 async def request_correlation_middleware(request: Request, call_next):
-    correlation_id = request.headers.get("X-Request-ID") or request.headers.get("X-Correlation-ID") or str(uuid.uuid4())
+    correlation_id = (
+        request.headers.get("X-Request-ID")
+        or request.headers.get("X-Correlation-ID")
+        or str(uuid.uuid4())
+    )
     request.state.correlation_id = correlation_id
-    logger.info("Incoming Request [%s] %s %s", correlation_id, request.method, request.url.path)
+    logger.info(
+        "Incoming Request [%s] %s %s",
+        correlation_id,
+        request.method,
+        request.url.path,
+    )
     response = await call_next(request)
     response.headers["X-Request-ID"] = correlation_id
-    logger.info("Completed Request [%s] Status: %d", correlation_id, response.status_code)
+    logger.info(
+        "Completed Request [%s] Status: %d",
+        correlation_id,
+        response.status_code,
+    )
     return response
 
 
@@ -59,7 +71,11 @@ async def enforce_rate_limits(request: Request, call_next):
         category = "create"
     elif request.method == "GET" and request.url.path.startswith("/api/v1/analytics/"):
         category = "analytics"
-    elif request.method == "GET" and request.url.path.count("/") == 1 and request.url.path != "/":
+    elif (
+        request.method == "GET"
+        and request.url.path.count("/") == 1
+        and request.url.path != "/"
+    ):
         category = "redirect"
 
     if category is None:
@@ -70,18 +86,36 @@ async def enforce_rate_limits(request: Request, call_next):
     except InvalidClientAddress as exc:
         return JSONResponse(
             status_code=400,
-            content={"error": ErrorResponse(code="invalid_client_address", message=exc.message, details=None).model_dump()},
+            content={
+                "error": ErrorResponse(
+                    code="invalid_client_address",
+                    message=exc.message,
+                    details=None,
+                ).model_dump()
+            },
         )
     except RateLimitExceeded as exc:
         return JSONResponse(
             status_code=429,
             headers={"Retry-After": str(exc.retry_after_seconds)},
-            content={"error": ErrorResponse(code="rate_limit_exceeded", message=exc.message, details=None).model_dump()},
+            content={
+                "error": ErrorResponse(
+                    code="rate_limit_exceeded",
+                    message=exc.message,
+                    details=None,
+                ).model_dump()
+            },
         )
     except RateLimitUnavailable as exc:
         return JSONResponse(
             status_code=503,
-            content={"error": ErrorResponse(code="rate_limit_unavailable", message=exc.message, details=None).model_dump()},
+            content={
+                "error": ErrorResponse(
+                    code="rate_limit_unavailable",
+                    message=exc.message,
+                    details=None,
+                ).model_dump()
+            },
         )
     return await call_next(request)
 
@@ -149,9 +183,15 @@ def shorten_url(payload: ShortenRequest):
         return record
     except AliasConflictException as exc:
         logger.warning("Alias Conflict: %s", exc.message)
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=exc.message) from exc
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=exc.message,
+        ) from exc
     except InvalidURLSchemeException as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.message) from exc
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=exc.message,
+        ) from exc
 
 
 @app.get(
@@ -165,7 +205,10 @@ def redirect_to_url(short_code: str):
         target_url = service.resolve_url(short_code)
         return RedirectResponse(url=target_url, status_code=status.HTTP_302_FOUND)
     except URLNotFoundException as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=exc.message,
+        ) from exc
 
 
 @app.get(
@@ -178,7 +221,9 @@ def get_analytics(short_code: str, request: Request):
         header_value = request.headers.get("Authorization", "")
         expected = f"Bearer {settings.analytics_api_key}"
         if header_value != expected:
-            raise AnalyticsAuthenticationRequired("A valid bearer token is required.")
+            raise AnalyticsAuthenticationRequired(
+                "A valid bearer token is required."
+            )
 
     try:
         record = service.get_analytics(short_code)
@@ -189,14 +234,23 @@ def get_analytics(short_code: str, request: Request):
             "total_clicks": record["clicks"],
         }
     except URLNotFoundException as exc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.message) from exc
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=exc.message,
+        ) from exc
 
 
 @app.exception_handler(URLNotFoundException)
 async def handle_url_not_found(request: Request, exc: URLNotFoundException):
     return JSONResponse(
         status_code=404,
-        content={"error": ErrorResponse(code="url_not_found", message=exc.message, details=None).model_dump()},
+        content={
+            "error": ErrorResponse(
+                code="url_not_found",
+                message=exc.message,
+                details=None,
+            ).model_dump()
+        },
     )
 
 
@@ -204,7 +258,13 @@ async def handle_url_not_found(request: Request, exc: URLNotFoundException):
 async def handle_alias_conflict(request: Request, exc: AliasConflictException):
     return JSONResponse(
         status_code=400,
-        content={"error": ErrorResponse(code="alias_conflict", message=exc.message, details=None).model_dump()},
+        content={
+            "error": ErrorResponse(
+                code="alias_conflict",
+                message=exc.message,
+                details=None,
+            ).model_dump()
+        },
     )
 
 
@@ -212,23 +272,47 @@ async def handle_alias_conflict(request: Request, exc: AliasConflictException):
 async def handle_invalid_url(request: Request, exc: InvalidURLSchemeException):
     return JSONResponse(
         status_code=422,
-        content={"error": ErrorResponse(code="invalid_url", message=exc.message, details=None).model_dump()},
+        content={
+            "error": ErrorResponse(
+                code="invalid_url",
+                message=exc.message,
+                details=None,
+            ).model_dump()
+        },
     )
 
 
 @app.exception_handler(AnalyticsAuthenticationRequired)
-async def handle_analytics_auth_required(request: Request, exc: AnalyticsAuthenticationRequired):
+async def handle_analytics_auth_required(
+    request: Request,
+    exc: AnalyticsAuthenticationRequired,
+):
     return JSONResponse(
         status_code=401,
-        content={"error": ErrorResponse(code="authentication_required", message=exc.message, details=None).model_dump()},
+        content={
+            "error": ErrorResponse(
+                code="authentication_required",
+                message=exc.message,
+                details=None,
+            ).model_dump()
+        },
     )
 
 
 @app.exception_handler(AnalyticsAuthenticationUnavailable)
-async def handle_analytics_auth_unavailable(request: Request, exc: AnalyticsAuthenticationUnavailable):
+async def handle_analytics_auth_unavailable(
+    request: Request,
+    exc: AnalyticsAuthenticationUnavailable,
+):
     return JSONResponse(
         status_code=503,
-        content={"error": ErrorResponse(code="authentication_not_configured", message=exc.message, details=None).model_dump()},
+        content={
+            "error": ErrorResponse(
+                code="authentication_not_configured",
+                message=exc.message,
+                details=None,
+            ).model_dump()
+        },
     )
 
 
@@ -237,7 +321,13 @@ async def handle_rate_limit_exceeded(request: Request, exc: RateLimitExceeded):
     return JSONResponse(
         status_code=429,
         headers={"Retry-After": str(exc.retry_after_seconds)},
-        content={"error": ErrorResponse(code="rate_limit_exceeded", message=exc.message, details=None).model_dump()},
+        content={
+            "error": ErrorResponse(
+                code="rate_limit_exceeded",
+                message=exc.message,
+                details=None,
+            ).model_dump()
+        },
     )
 
 
@@ -245,7 +335,13 @@ async def handle_rate_limit_exceeded(request: Request, exc: RateLimitExceeded):
 async def handle_rate_limit_unavailable(request: Request, exc: RateLimitUnavailable):
     return JSONResponse(
         status_code=503,
-        content={"error": ErrorResponse(code="rate_limit_unavailable", message=exc.message, details=None).model_dump()},
+        content={
+            "error": ErrorResponse(
+                code="rate_limit_unavailable",
+                message=exc.message,
+                details=None,
+            ).model_dump()
+        },
     )
 
 
@@ -253,7 +349,13 @@ async def handle_rate_limit_unavailable(request: Request, exc: RateLimitUnavaila
 async def handle_invalid_client_address(request: Request, exc: InvalidClientAddress):
     return JSONResponse(
         status_code=400,
-        content={"error": ErrorResponse(code="invalid_client_address", message=exc.message, details=None).model_dump()},
+        content={
+            "error": ErrorResponse(
+                code="invalid_client_address",
+                message=exc.message,
+                details=None,
+            ).model_dump()
+        },
     )
 
 

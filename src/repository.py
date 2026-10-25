@@ -80,7 +80,8 @@ class SQLiteRepository:
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
-                "SELECT short_code, original_url, created_at, clicks FROM urls WHERE short_code = ?",
+                "SELECT short_code, original_url, created_at, clicks "
+                "FROM urls WHERE short_code = ?",
                 (short_code,),
             )
             row = cursor.fetchone()
@@ -123,9 +124,9 @@ class PostgresRepository:
     def __init__(self, database_url: str | None = None):
         self.database_url = database_url or settings.database_url
         try:
-            from sqlalchemy import create_engine, text
+            from sqlalchemy import create_engine
             from sqlalchemy.orm import sessionmaker
-        except Exception as exc:  # pragma: no cover - depends on optional driver
+        except Exception as exc:  # pragma: no cover - optional dependency
             raise RuntimeError("SQLAlchemy is required for PostgresRepository") from exc
 
         self.engine = create_engine(self.database_url, pool_pre_ping=True)
@@ -208,7 +209,8 @@ class PostgresRepository:
         with self.engine.connect() as conn:
             row = conn.execute(
                 text(
-                    "SELECT short_code, original_url, created_at, clicks FROM urls WHERE short_code = :short_code"
+                    "SELECT short_code, original_url, created_at, clicks "
+                    "FROM urls WHERE short_code = :short_code"
                 ),
                 {"short_code": short_code},
             ).fetchone()
