@@ -252,9 +252,9 @@ class PostgresRepository:
 
 def get_repository(database_url: str | None = None):
     url = database_url or settings.database_url
-    if url.startswith("postgresql"):
-        try:
-            return PostgresRepository(url)
-        except Exception:
-            return SQLiteRepository(db_path="urls.db")
+    if settings.use_postgres and url.startswith("postgresql"):
+         try:
+             return PostgresRepository(url)
+         except Exception:
+             return SQLiteRepository(db_path="urls.db")
     return SQLiteRepository(db_path="urls.db")

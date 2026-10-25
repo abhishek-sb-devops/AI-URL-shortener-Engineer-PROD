@@ -129,7 +129,10 @@ def liveness_probe():
 def readiness_probe():
     try:
         repo.check_health()
-        return {"status": "ready", "storage": "sqlite_connected"}
+        return {
+            "status": "ready",
+            "storage": "postgres_connected" if settings.is_postgres_enabled else "sqlite_connected",
+        }
     except Exception as exc:
         logger.error("Readiness check failed: %s", str(exc))
         raise HTTPException(
@@ -148,7 +151,7 @@ def health_ready():
     try:
         repo.check_health()
         dependencies = {
-            "postgres": settings.database_url.startswith("postgresql"),
+            "database": settings.is_postgres_enabled,
             "redis": True,
             "analytics_authentication": bool(settings.analytics_api_key),
         }
@@ -160,7 +163,7 @@ def health_ready():
             content={
                 "status": "not_ready",
                 "dependencies": {
-                    "postgres": False,
+                    "database": False,
                     "redis": False,
                     "analytics_authentication": bool(settings.analytics_api_key),
                 },

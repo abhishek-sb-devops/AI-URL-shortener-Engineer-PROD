@@ -5,6 +5,38 @@ on: [push, pull_request]
 jobs:
   test-and-lint:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: url_shortener
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d url_shortener"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    env:
+      USE_POSTGRES: "true"
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/url_shortener
+      REDIS_URL: redis://localhost:6379/0
+      ENABLE_RATE_LIMITS: "true"
+      ANALYTICS_API_KEY: test-analytics-key
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -26,3 +58,16 @@ jobs:
       - name: Run Pytest
         run: |
           python -m pytest -v tests/
+
+      - name: Smoke test Postgres + Redis profile
+        run: |
+          python - <<'PY'
+          from src.config import settings
+          from src.repository import get_repository
+
+          assert settings.use_postgres is True
+          assert settings.database_url.startswith('postgresql')
+          repo = get_repository(settings.database_url)
+          assert repo is not None
+          print('production profile initialized:', type(repo).__name__)
+          PY
