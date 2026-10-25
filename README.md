@@ -5,107 +5,555 @@
 ![Code Style](https://img.shields.io/badge/code%20style-flake8-green)
 ![Tests](https://img.shields.io/badge/tests-pytest-brightgreen)
 
-A production-ready URL shortener microservice built with **Python 3.13**, **FastAPI**, **SQLite**, and **Docker**.
+A hardened URL shortener service built with Python, FastAPI, and a production-oriented configuration model. The project supports custom aliases, redirect flows, analytics reads, optional analytics authentication, and operational controls such as request correlation, dependency-aware health checks, and Redis-backed rate limiting when enabled.
 
----
+## Architecture summary
 
-## 📁 Directory Structure
+This repository is intentionally positioned as a practical production-style URL shortener foundation:
+
+- FastAPI service with redirect and analytics endpoints
+- SQLite repository for local/default execution with WAL durability
+- Postgres-aware repository scaffolding and Alembic migration setup for deployment readiness
+- Redis-backed rate limiting and client IP validation helpers
+- Optional analytics bearer-token protection via environment configuration
+- Structured logging and request correlation middleware
+- Environment-driven settings for deployment and local operation
+
+## Repository structure
 
 ```text
 ai-proficient-se/
+├── .env.example                 # Environment-based config template
 ├── .github/
 │   └── workflows/
-│       └── ci.yml             # GitHub Actions CI pipeline
-├── src/                       # Application Source Code
+│       └── ci.yml               # CI workflow
+├── alembic/                     # Migration scaffolding and configuration
+│   ├── env.py
+│   ├── versions/
+│   └── ...
+├── src/
 │   ├── __init__.py
-│   ├── config.py              # Environment & Pydantic settings
-│   ├── encoder.py             # Base62 encoding utility
-│   ├── exceptions.py          # Custom domain exception hierarchy
-│   ├── main.py                # FastAPI entrypoint & health routes
-│   ├── middleware.py          # Request correlation ID middleware
-│   ├── models.py              # Pydantic schemas aligned with OpenAPI spec
-│   ├── repository.py          # Thread-safe SQLite persistence layer
-│   └── service.py             # Domain service & thread-locked alias management
-├── tests/                     # Automated Test Suite
-│   ├── __init__.py
-│   ├── test_api.py            # Integration tests (HTTP, contract, analytics, concurrency)
-│   └── test_service.py        # Unit tests (encoder, repository, domain logic)
-├── AI_DOCUMENTATION.md        # AI workflow, prompts, and engineering trade-offs
-├── Dockerfile                 # Production container build
-├── openapi.yaml               # OpenAPI 3.0 API Specification
-├── pyproject.toml             # Flake8 & Pytest configuration
-├── requirements.txt           # Explicit Python dependencies
-└── README.md                  # Architectural overview & setup guide
+│   ├── analytics_worker.py      # Redis-backed analytics worker stub
+│   ├── config.py               # Pydantic settings and environment config
+│   ├── encoder.py              # Base62 code generation utility
+│   ├── exceptions.py            # Domain-specific exceptions
+│   ├── main.py                 # FastAPI application entrypoint
+│   ├── middleware.py           # Request correlation middleware
+│   ├── models.py               # Request/response schemas
+│   ├── ratelimit.py            # Redis-backed rate limiting logic
+│   ├── repository.py           # SQLite repository + Postgres-ready abstraction
+│   └── service.py              # URL shortening and resolution logic
+├── tests/
+│   ├── test_api.py             # API integration tests
+│   └── test_service.py         # Unit tests
+├── AI_DOCUMENTATION.md
+├── Dockerfile
+├── pyproject.toml
+├── requirements.txt
+└── README.md
+```
 
-🚀 Key Features & Architecture
-Persistent Storage: SQLite database backend with Write-Ahead Logging (WAL) and busy timeouts, ensuring data durability across container restarts.
+## Features
 
-Concurrency & Thread Safety: Thread-safe custom alias assignment guaranteed via threading.Lock() at the service layer and PRIMARY KEY constraints at the database layer.
+- Create short links with optional custom aliases
+- Resolve short codes via redirect response
+- Record click counts in storage
+- Support analytics retrieval for a short code
+- Health and readiness route checks
+- Request correlation IDs in headers
+- Validation for invalid destination URLs and alias conflicts
+- Environment configuration via `.env` and `pydantic-settings`
+- Optional analytics auth via bearer token
+- Redis-backed rate limiting when `ENABLE_RATE_LIMITS=true`
+- Postgres-ready repository and Alembic migration scaffolding for operational upgrades
 
-OpenAPI 3.0 Alignment: Fully aligned request payload schemas (original_url), response payloads (short_code, original_url, created_at), and status codes (400 Bad Request for conflicts).
+## Prerequisites
 
-Observability: Structured JSON logging, /healthz and /readyz probes, and X-Correlation-ID header request tracing.
+- Python 3.11+
+- Optional: PostgreSQL and Redis for production-like deployment tests
+- Optional: Docker for containerized runs
 
-AI Execution Artifacts: Detailed documentation in AI_DOCUMENTATION.md outlining greenfield/brownfield prompts, iteration logs, and engineering trade-offs.
-
-🛠️ Getting Started
-Prerequisites
-Python 3.11+
-Docker (optional)
-
-Local Setup & Installation
+## Local setup
 
 Clone the repository:
 
-git clone [https://github.com/abhishek-sb-devops/ai-proficient-se.git](https://github.com/abhishek-sb-devops/ai-proficient-se.git)
+```bash
+git clone https://github.com/abhishek-sb-devops/ai-proficient-se.git
 cd ai-proficient-se
+```
 
 Create and activate a virtual environment:
 
-python -m venv venv
-# On macOS/Linux:
-source venv/bin/activate
-
-# On Windows:
-venv\Scripts\activate
+```bash
+python -m venv .venv
+source .venv/bin/activate   # Linux/macOS
+# or .venv\Scripts\activate # Windows
+```
 
 Install dependencies:
-install -r requirements.txt
 
-Run the local development server:
+```bash
+python -m pip install -r requirements.txt
+```
+
+Create an environment file from the example:
+
+```bash
+cp .env.example .env
+```
+
+Review and adjust values such as:
+
+- `DATABASE_URL`
+- `REDIS_URL`
+- `ANALYTICS_API_KEY`
+- `ENABLE_RATE_LIMITS`
+- `TRUSTED_PROXY_CIDRS`
+
+## Running the app
+
+```bash
 uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
-The service will be available at http://localhost:8000. Access interactive API documentation at http://localhost:8000/docs.
+```
 
-🧪 Testing & Linting
+Then open:
 
-Run the Test SuiteThe repository includes unit tests (tests/test_service.py) and HTTP 
+- http://localhost:8000/docs
+- http://localhost:8000/healthz
+- http://localhost:8000/readyz
 
-integration/concurrency tests (tests/test_api.py):
-python -m pytest -v tests/
+## API endpoints
 
-Run Code LinterEnforce code formatting and line-length standards:
-python -m flake8 src/ tests/ --max-line-length=100
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/healthz` | Liveness check |
+| `GET` | `/readyz` | Readiness check |
+| `GET` | `/health/live` | Lightweight process liveness |
+| `GET` | `/health/ready` | Dependency-aware readiness |
+| `POST` | `/api/v1/shorten` | Create a short code |
+| `GET` | `/{short_code}` | Redirect to original URL |
+| `GET` | `/api/v1/analytics/{short_code}` | Fetch analytics for a short code |
 
-## 🐳 Docker Deployment & Troubleshooting
+Example shorten request:
 
-### 1. Build and Run Container
+```bash
+curl -X POST http://localhost:8000/api/v1/shorten \
+  -H "Content-Type: application/json" \
+  -d '{"original_url":"https://example.com"}'
+```
 
-```powershell
-# Build the Docker image
-docker build -t url-shortener .
+Example analytics request with bearer auth:
 
-# Run the container in detached mode on port 8000
-docker run -d -p 8000:8000 --name url-shortener-app url-shortener
+```bash
+curl -H "Authorization: Bearer change-me-to-a-long-random-secret" \
+  http://localhost:8000/api/v1/analytics/<short_code>
+```
 
-# Verify service liveness
-Invoke-RestMethod -Uri "http://localhost:8000/healthz"
+## Operational controls
 
-## 📋 API Endpoints Summary
+This repository includes several operational hardening patterns that align with a production-style service:
 
-| Method | Endpoint | Description | Status Code |
-| :--- | :--- | :--- | :--- |
-| `GET` | `/healthz`                       | Liveness probe                             | `200 OK` |
-| `GET` | `/readyz`                        | Readiness probe (verifies DB connection)   | `200 OK` / `503 Service Unavailable` |
-| `POST`| `/api/v1/shorten`                | Shorten a URL or claim a custom alias      | `201 Created` / `400 Bad Request` |
-| `GET` | `/{short_code}`                  | Redirect to original URL                   | `302 Found` / `404 Not Found` |
-| `GET` | `/api/v1/analytics/{short_code}` | Retrieve redirect click count              | `200 OK` / `404 Not Found` |
+- Request correlation middleware emits `X-Request-ID`
+- Health and readiness endpoints distinguish process health from dependency health
+- Optional bearer authentication protects analytics access
+- Redis-based per-client rate limiting can be enabled with environment config
+- Trusted proxy configuration is supported for forwarded IP handling
+- Postgres-ready repository layer and Alembic scaffolding support future migration-driven deployment
+
+## Testing
+
+Run the project tests:
+
+```bash
+pytest -q
+```
+
+For linting:
+
+```bash
+flake8 src tests --max-line-length=100
+```
+
+## Notes
+
+This project is a hardened, operationally aware URL shortener foundation rather than a single-purpose toy implementation. It supports local SQLite use and includes the scaffolding needed for PostgreSQL/Redis-oriented deployment patterns while maintaining a testable FastAPI interface.
+
+The service remains suitable for local development and incremental production hardening, and the codebase is intentionally structured to support that progression.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
