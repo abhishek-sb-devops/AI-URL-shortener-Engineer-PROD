@@ -1,5 +1,9 @@
+from __future__ import annotations
+
+import json
 import logging
 import sys
+import uuid
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request, status
@@ -17,35 +21,70 @@ from src.exceptions import (
     URLNotFoundException,
 )
 from src.models import AnalyticsResponse, ErrorResponse, ShortenRequest, ShortenResponse
-from src.repository import SQLiteRepository
+from src.ratelimit import RateLimiter, get_client_ip
+from src.repository import SQLiteRepository, get_repository
 from src.service import URLShortenerService
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 logger = logging.getLogger("app")
 
-repo = SQLiteRepository(settings.database_url)
+repo = get_repository(settings.database_url)
 service = URLShortenerService(repository=repo)
+rate_limiter = RateLimiter()
 
 app = FastAPI(
     title=settings.app_name,
-    version="1.1.0",
+    version="1.2.0",
     description="Production-ready URL Shortener Microservice",
 )
 
 
 @app.middleware("http")
 async def request_correlation_middleware(request: Request, call_next):
-    correlation_id = request.headers.get("X-Request-ID", request.headers.get("X-Correlation-ID"))
-    if not correlation_id:
-        import uuid
-
-        correlation_id = str(uuid.uuid4())
+    correlation_id = request.headers.get("X-Request-ID") or request.headers.get("X-Correlation-ID") or str(uuid.uuid4())
     request.state.correlation_id = correlation_id
     logger.info("Incoming Request [%s] %s %s", correlation_id, request.method, request.url.path)
     response = await call_next(request)
     response.headers["X-Request-ID"] = correlation_id
     logger.info("Completed Request [%s] Status: %d", correlation_id, response.status_code)
     return response
+
+
+@app.middleware("http")
+async def enforce_rate_limits(request: Request, call_next):
+    if not settings.enable_rate_limits:
+        return await call_next(request)
+
+    category = None
+    if request.method == "POST" and request.url.path == "/api/v1/shorten":
+        category = "create"
+    elif request.method == "GET" and request.url.path.startswith("/api/v1/analytics/"):
+        category = "analytics"
+    elif request.method == "GET" and request.url.path.count("/") == 1 and request.url.path != "/":
+        category = "redirect"
+
+    if category is None:
+        return await call_next(request)
+
+    try:
+        await rate_limiter.enforce(request, category)
+    except InvalidClientAddress as exc:
+        return JSONResponse(
+            status_code=400,
+            content={"error": ErrorResponse(code="invalid_client_address", message=exc.message, details=None).model_dump()},
+        )
+    except RateLimitExceeded as exc:
+        return JSONResponse(
+            status_code=429,
+            headers={"Retry-After": str(exc.retry_after_seconds)},
+            content={"error": ErrorResponse(code="rate_limit_exceeded", message=exc.message, details=None).model_dump()},
+        )
+    except RateLimitUnavailable as exc:
+        return JSONResponse(
+            status_code=503,
+            content={"error": ErrorResponse(code="rate_limit_unavailable", message=exc.message, details=None).model_dump()},
+        )
+    return await call_next(request)
 
 
 @app.get("/healthz", status_code=status.HTTP_200_OK, tags=["Health"])
@@ -75,13 +114,24 @@ def health_live():
 def health_ready():
     try:
         repo.check_health()
-        dependencies = {"postgres": True, "redis": True, "analytics_authentication": bool(settings.analytics_api_key)}
+        dependencies = {
+            "postgres": settings.database_url.startswith("postgresql"),
+            "redis": True,
+            "analytics_authentication": bool(settings.analytics_api_key),
+        }
         return {"status": "ready", "dependencies": dependencies}
-    except Exception as exc:
+    except Exception as exc:  # pragma: no cover - defensive operational path
         logger.error("health ready failed: %s", exc)
         return JSONResponse(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            content={"status": "not_ready", "dependencies": {"postgres": False, "redis": False, "analytics_authentication": bool(settings.analytics_api_key)}},
+            content={
+                "status": "not_ready",
+                "dependencies": {
+                    "postgres": False,
+                    "redis": False,
+                    "analytics_authentication": bool(settings.analytics_api_key),
+                },
+            },
         )
 
 
@@ -125,15 +175,13 @@ def redirect_to_url(short_code: str):
     tags=["Analytics"],
 )
 def get_analytics(short_code: str, request: Request):
-    auth_header = request.headers.get("Authorization", "")
-    api_key = settings.analytics_api_key
-    if api_key is None:
-        auth_required = False
-    else:
-        auth_required = True
-        expected = f"Bearer {api_key}"
-        if auth_header != expected:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="A valid bearer token is required")
+    if settings.analytics_api_key is None:
+        raise AnalyticsAuthenticationUnavailable("Analytics authentication is not configured.")
+
+    header_value = request.headers.get("Authorization", "")
+    expected = f"Bearer {settings.analytics_api_key}"
+    if header_value != expected:
+        raise AnalyticsAuthenticationRequired("A valid bearer token is required.")
 
     try:
         record = service.get_analytics(short_code)

@@ -1,13 +1,11 @@
+from __future__ import annotations
+
 import logging
 import threading
 from urllib.parse import urlparse
 
 from src.encoder import Base62Encoder
-from src.exceptions import (
-    AliasConflictException,
-    InvalidURLSchemeException,
-    URLNotFoundException,
-)
+from src.exceptions import AliasConflictException, InvalidURLSchemeException, URLNotFoundException
 
 logger = logging.getLogger("app.service")
 
