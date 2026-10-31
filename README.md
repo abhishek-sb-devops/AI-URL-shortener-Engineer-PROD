@@ -2,42 +2,101 @@
 
 A production-style URL shortener service built with FastAPI, SQLite-first local execution, Postgres-ready repository abstraction, Redis-backed rate limiting, and operational health checks.
 
-This repository is structured for:
-- local development and testing
-- CI validation
-- deployment-readiness discussion
-- environment-based configuration
-- operational hardening evaluation
+This project is designed to demonstrate a realistic engineering workflow:
+- building a working service
+- validating behavior with tests
+- improving operational readiness
+- documenting architecture and evidence
+- being explicit about what is still not production-certified
 
-## Overview
+## Why this project exists
 
-This project implements the following:
-- generating short URLs from original URLs
+This repository implements a basic URL shortener service with:
+- short code generation
+- redirect handling
 - optional custom aliases
-- redirect resolution
 - click tracking
-- analytics retrieval
+- analytics access
 - health and readiness endpoints
-- configuration via environment variables
-- SQLite default mode with Postgres-ready architecture
-- Redis-backed rate limiting support
-- optional analytics bearer-token protection
+- local SQLite execution
+- Postgres-ready architecture
+- Redis-backed rate limiting
+- production-style configuration
 
-The service is intentionally built as a production-style foundation, not as a disposable toy example.
+The goal is not just to create a shortener, but to show a practical engineering progression:
+- greenfield implementation
+- correctness fixes
+- operational hardening
+- CI stabilization
+- evidence and documentation improvement
 
-## Architecture
+## Project status
+
+This repository is best described as:
+- a production-style foundation
+- a credible engineering implementation
+- suitable for assessment and review
+- not yet a fully production-certified public deployment
+
+It includes real implementation and validation work, but it still requires additional operational work before public production rollout.
+
+## Architecture summary
+
+This service is built around a simple layered architecture:
 
 - API layer: FastAPI
-- Storage:
-  - SQLite by default for local/dev execution
-  - Postgres-ready repository abstraction for production-style deployment
+- Business logic: service layer
+- Data access: repository layer
+- Persistence:
+  - SQLite by default for local execution
+  - Postgres-ready abstraction for production-style deployment
 - Rate limiting: Redis
-- Config: Pydantic Settings
+- Config: environment-driven settings
 - Validation: pytest
 - Linting: flake8
 - CI: GitHub Actions
 
-## Repository layout
+## Main components
+
+- `src/main.py`
+  - FastAPI application entry point
+- `src/service.py`
+  - shortener logic
+  - redirect logic
+  - alias validation
+  - click tracking
+- `src/repository.py`
+  - storage logic
+  - persistence abstraction
+- `src/config.py`
+  - environment-driven configuration
+- `src/ratelimit.py`
+  - Redis-backed rate limiting
+- `src/models.py`
+  - request/response schemas
+- `src/encoder.py`
+  - short-code generation
+- `src/exceptions.py`
+  - domain-specific exceptions
+
+## Features
+
+- create short URLs from original URLs
+- generate deterministic short codes
+- support custom aliases
+- redirect short codes to destination URLs
+- count clicks
+- expose analytics endpoints
+- validate invalid URLs and duplicate aliases
+- health and readiness probes
+- request correlation IDs
+- environment-based configuration
+- SQLite fallback for local execution
+- Postgres-ready repository abstraction
+- Redis-based rate limiting
+- optional analytics authentication via bearer token
+
+## Repository structure
 
 ```text
 AI-URL-shortener-Engineer-PROD/
@@ -79,4 +138,5 @@ AI-URL-shortener-Engineer-PROD/
 ├── requirements.txt
 ├── README.md
 ├── .gitignore
+├── .env.example
 └── .env
