@@ -67,7 +67,7 @@ Open:
 - http://127.0.0.1:8000/docs
 Then run:
 
-# HTTP
+- HTTP
 POST /api/auth/login
 with the administrator ID and password.
 
@@ -80,7 +80,7 @@ Note: Authorize only signs in the existing account and does not create an accoun
 Change your own password
 Run:
 
-# HTTP
+- HTTP
 POST /api/auth/change-password
 with a body like:
 
@@ -95,7 +95,7 @@ Existing bearer tokens are invalidated by the password change. Log in again with
 Create a staff account
 Run:
 
-# HTTP
+- HTTP
 POST /api/admin/staff
 with a body similar to:
 
@@ -112,7 +112,7 @@ Give the code to the staff member.
 Staff activation
 The staff member runs:
 
-# HTTP
+- HTTP
 POST /api/auth/activate
 with:
 
