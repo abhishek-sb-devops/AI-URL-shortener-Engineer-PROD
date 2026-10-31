@@ -138,7 +138,8 @@ JSON
   "expires_in_days": 1,
   "expires_in_hours": 2
 }
-Expiration values are interpreted as:
+
+# Expiration values are interpreted as:
 
 expires_in_days and expires_in_hours are nonnegative whole numbers
 they are added together
@@ -146,7 +147,8 @@ example: 1 day + 2 hours = 26 hours
 example: 1 day + 0 hours = 24 hours
 both default to 0
 omitting them or setting both to 0 means no expiration
-The response includes:
+
+# The response includes:
 
 the six-character code
 the fully-qualified short URL for the current host
@@ -154,8 +156,8 @@ This applies both when creating and listing links.
 
 The MVP does not provide an endpoint for creating additional administrator accounts.
 
-MVP Behavior
-Administrators and staff
+# MVP Behavior
+- Administrators and staff
 Administrators create staff accounts
 each new staff member receives a one-time activation code valid for 12 hours
 administrators can issue a replacement after expiry
@@ -163,32 +165,37 @@ the old code remains invalid
 staff can create, list, and delete only their own links
 administrators can manage all agency links
 administrators can deactivate staff accounts
-Link security and validation
+
+- Link security and validation
 destinations must be syntactically valid absolute HTTP or HTTPS URLs
 private, loopback, and internal destinations are accepted
 network-level filtering is deferred
 each submission receives a distinct unique six-character Base62 short code, even for repeated destinations
-Expiration behavior
+
+- Expiration behavior
 links do not expire by default
 a creator may set expiration using expires_in_days and expires_in_hours
 values are added together
 zero is accepted for either or both values
-Redirect behavior
+
+- Redirect behavior
 successful redirects return 302 with Cache-Control: no-store
 redirect processing increments the link's total click count
 unknown, deleted, and expired short links return the same generic 404 Not Found page
-Deletion and retained counts
+
+- Deletion and retained counts
 deleting a link removes its user-facing record
 only an unlinked click-count value is retained for up to 30 days
 the retained value is not exposed through the API
 expired retained counts are purged during database-backed requests
-Performance target
+
+- Performance target
 Redirect processing has a target of server-side p95 below 200 ms for typical requests.
 
 The estimated 3,000 redirects per second is a planning assumption, not a required load-test threshold.
 
-Brownfield Abuse-Control Enhancement
-Public redirect requests are rate-limited per resolved source IP:
+# Brownfield Abuse-Control Enhancement
+- Public redirect requests are rate-limited per resolved source IP:
 
 up to 10 requests in a rolling 2-second window are allowed
 the next request receives 429 Too Many Requests
@@ -198,12 +205,11 @@ unknown short-code requests count toward the threshold
 denied requests do not increment click counts
 This enhancement is additive to the original MVP requirements.
 
-Environment configuration
+- Environment configuration
 The limiter uses the direct connection IP unless the peer is listed in TRUSTED_PROXY_IPS.
 
 Set this comma-separated environment variable before starting Uvicorn only when deployed behind known trusted proxies, for example:
 
-Text
 10.0.0.10,10.0.0.0/24
 Forwarded IP headers from other peers are ignored.
 
@@ -212,17 +218,18 @@ These can override defaults:
 REDIRECT_RATE_LIMIT_REQUESTS
 REDIRECT_RATE_LIMIT_WINDOW_SECONDS
 REDIRECT_RATE_LIMIT_COOLDOWN_SECONDS
-Limiter behavior
+
+# Limiter behavior
 The current limiter is:
 
-in-memory
-per process
-reset on restart
-not coordinated across multiple workers or application instances
-shared-IP visitors may share a rate limit
-See brownfield requirements for additional details.
+- in-memory
+- per process
+- reset on restart
+- not coordinated across multiple workers or application instances
+- shared-IP visitors may share a rate limit
+- See brownfield requirements for additional details.
 
-API Summary
+# API Summary
 Method	Path	Purpose
 POST	/api/auth/login	Exchange staff ID and password for a bearer token
 POST	/api/auth/change-password	Change the authenticated user's password after verifying the current password
@@ -237,6 +244,6 @@ DELETE	/api/links/{code}	Delete an owned link, or any link as administrator
 GET	/{code}	Redirect to a valid destination or return the generic unavailable response
 The initial administrator is created through the one-time first-run setup screen. This is not public staff self-registration.
 
-Testing
+# Testing
 bash
 .\.venv\Scripts\python.exe -m pytest
