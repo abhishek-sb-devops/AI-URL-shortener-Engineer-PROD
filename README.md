@@ -28,8 +28,11 @@ This is a focused MVP implementation designed for a single agency environment.
 - python -m venv .venv
 
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
+
 $env:SECRET_KEY = [guid]::NewGuid().ToString("N") + [guid]::NewGuid().ToString("N")
+
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
+
 The command generates a fresh random signing key for the current PowerShell session.
 
 For a persistent deployment, configure a private random key through the deployment environment or secret store. Do not commit it to the repository.
