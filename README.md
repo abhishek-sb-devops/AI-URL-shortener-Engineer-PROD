@@ -36,7 +36,8 @@ For a persistent deployment, configure a private random key through the deployme
 
 Open:
 
-- http://127.0.0.1:8000/
+http://127.0.0.1:8000/
+
 This is the first-run setup screen for creating the initial administrator account. The setup page closes after the first administrator is created.
 
 Keep the server on localhost until setup is complete.
