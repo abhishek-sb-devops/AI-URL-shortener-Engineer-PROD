@@ -83,6 +83,7 @@ POST /api/auth/change-password
 with a body like:
 
 JSON
+
 {
   "current_password": "your-current-password",
   "new_password": "your-new-password",
@@ -98,6 +99,7 @@ POST /api/admin/staff
 with a body similar to:
 
 JSON
+
 {
   "staff_id": "reporter-1"
 }
@@ -115,6 +117,7 @@ POST /api/auth/activate
 with:
 
 JSON
+
 {
   "staff_id": "reporter-1",
   "activation_code": "ACTIVATION-CODE",
@@ -134,6 +137,7 @@ POST /api/links
 with a payload such as:
 
 JSON
+
 {
   "destination_url": "https://example.com/news",
   "expires_in_days": 1,
@@ -250,4 +254,4 @@ The initial administrator is created through the one-time first-run setup screen
 
 # Testing
 bash
-.\.venv\Scripts\python.exe -m pytest
+- .\.venv\Scripts\python.exe -m pytest
