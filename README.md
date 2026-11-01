@@ -66,6 +66,7 @@ Open:
 Then run:
 
 - HTTP
+
 POST /api/auth/login
 with the administrator ID and password.
 
@@ -79,6 +80,7 @@ Change your own password
 Run:
 
 - HTTP
+
 POST /api/auth/change-password
 with a body like:
 
@@ -95,6 +97,7 @@ Create a staff account
 Run:
 
 - HTTP
+
 POST /api/admin/staff
 with a body similar to:
 
@@ -103,6 +106,7 @@ JSON
 {
   "staff_id": "reporter-1"
 }
+
 This creates a staff account, not another administrator.
 
 The response includes a one-time activation code valid for 12 hours.
@@ -113,6 +117,7 @@ Staff activation
 The staff member runs:
 
 - HTTP
+
 POST /api/auth/activate
 with:
 
@@ -123,9 +128,11 @@ JSON
   "activation_code": "ACTIVATION-CODE",
   "password": "chosen-password"
 }
+
 They then log in via:
 
 - HTTP
+
 POST /api/auth/login
 and authorize Swagger with the returned token.
 
@@ -133,6 +140,7 @@ Link Creation and Expiration
 Run:
 
 - HTTP
+
 POST /api/links
 with a payload such as:
 
@@ -143,6 +151,7 @@ JSON
   "expires_in_days": 1,
   "expires_in_hours": 2
 }
+
 
 # Expiration values are interpreted as:
 
